@@ -93,11 +93,6 @@ int main(int argc, char *argv[])
 
 	if (userSKU != "")
 	{
-		if (email != "")
-		{
-			URI += "?skus[]=" + userSKU;
-		}
-
 		SKU = userSKU;
 	}
 
@@ -156,34 +151,41 @@ int main(int argc, char *argv[])
 
     json jsonData = json::parse(response);
 
-    printf("Info: Searching SKU '%s'\n", SKU.c_str());
+    printf("Info: Searching SKU '%s'\n\n", SKU.c_str());
 
     for (auto element : jsonData)
     {
-    	std::string foundSKU = "";
+    	std::string currentSKU = "";
+    	bool foundSKU = false;
 
     	if (element.contains("sku"))
     	{
     		json& sku = element["sku"];
 
-    		foundSKU = sku.get<std::string>();
+    		currentSKU = sku.get<std::string>();
 
-    		printf("Info: Processing SKU '%s'\n", foundSKU.c_str());
+    		printf("Info: Processing SKU '%s'\n", currentSKU.c_str());
 
         	// Avoid mass download
-    		if (foundSKU != SKU)
+    		if (currentSKU == SKU)
     		{
-    			continue;
+    			printf("Info: Found SKU '%s'\n", currentSKU.c_str());
+
+    			foundSKU = true;
+    		}
+    		else
+    		{
+    			foundSKU = false;
     		}
     	}
     	else
     	{
+    		foundSKU = false;
+
     		continue;
     	}
 
     	//
-
-    	printf("Info: Found SKU '%s'\n", foundSKU.c_str());
 
     	if (element.contains("model"))
     	{
@@ -195,60 +197,67 @@ int main(int argc, char *argv[])
 
     			if (!glb.is_null())
     			{
-    				std::string glb_uri = glb.get<std::string>();
-    				std::string glb_data = "";
+    		    	printf("Info: GLB uri available\n");
 
-    				printf("Info: Found glTF '%s'\n", glb_uri.c_str());
-
-    				curl_easy_setopt(curl, CURLOPT_URL, glb_uri.c_str());
-
-    				curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
-    				curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
-    				curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, CurlWrite);
-    				curl_easy_setopt(curl, CURLOPT_WRITEDATA, &glb_data);
-
-    				printf("Info: Downloading GLB '%s'\n", glb_uri.c_str());
-
-    				result = curl_easy_perform(curl);
-
-    				if(result != CURLE_OK)
+    				if (foundSKU)
     				{
-    					printf("Error: Could not download GLB '%s'\n", curl_easy_strerror(result));
+						std::string glb_uri = glb.get<std::string>();
+						std::string glb_data = "";
 
-    					continue;
+						printf("Info: Found glTF '%s'\n", glb_uri.c_str());
+
+						curl_easy_setopt(curl, CURLOPT_URL, glb_uri.c_str());
+
+						curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
+						curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
+						curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, CurlWrite);
+						curl_easy_setopt(curl, CURLOPT_WRITEDATA, &glb_data);
+
+						printf("Info: Downloading GLB '%s'\n", glb_uri.c_str());
+
+						result = curl_easy_perform(curl);
+
+						if(result != CURLE_OK)
+						{
+							printf("Error: Could not download GLB '%s'\n", curl_easy_strerror(result));
+
+							continue;
+						}
+
+						//
+
+						std::string filename = glb_uri;
+						size_t index = filename.find_last_of('/');
+						if (index != std::string::npos)
+						{
+							filename = filename.substr(index + 1);
+						}
+
+						if (!saveFile(glb_data, filename))
+						{
+							printf("Error: Could not save GLB '%s'\n", filename.c_str());
+
+							continue;
+						}
+
+						printf("Info: Saved GLB '%s'\n", filename.c_str());
     				}
 
-    				//
-
-    				std::string filename = glb_uri;
-    				size_t index = filename.find_last_of('/');
-    				if (index != std::string::npos)
-    				{
-    					filename = filename.substr(index + 1);
-    				}
-
-    				if (!saveFile(glb_data, filename))
-    				{
-    					printf("Error: Could not save GLB '%s'\n", filename.c_str());
-
-    					continue;
-    				}
-
-    				printf("Info: Saved GLB '%s'\n", filename.c_str());
+    				printf("\n");
     			}
     			else
     			{
-    				printf("Error: No GLB uri available\n");
+    				printf("Info: No GLB uri available\n\n");
     			}
     		}
 			else
 			{
-				printf("Error: No GLB available\n");
+				printf("Error: No GLB available\n\n");
 			}
     	}
 		else
 		{
-			printf("Error: No model available\n");
+			printf("Error: No model available\n\n");
 		}
     }
 
