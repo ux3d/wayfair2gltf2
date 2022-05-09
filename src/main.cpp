@@ -197,11 +197,12 @@ int main(int argc, char *argv[])
 
     			if (!glb.is_null())
     			{
-    		    	printf("Info: GLB uri available\n");
+    				std::string glb_uri = glb.get<std::string>();
+
+    		    	printf("Info: GLB uri available '%s'\n", glb_uri.c_str());
 
     				if (foundSKU)
     				{
-						std::string glb_uri = glb.get<std::string>();
 						std::string glb_data = "";
 
 						printf("Info: Found glTF '%s'\n", glb_uri.c_str());
